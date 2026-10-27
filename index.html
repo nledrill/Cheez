@@ -236,7 +236,7 @@ const API="";let ADMC=null;
 function lapi(p,d){const ok=d.login=="NLE"&&d.password=="7777";
 if(p=="/redeem"){const c=cl(d.code),x=S.promos[c];if(!x||x.left<=0)return{ok:0,error:"Промокод не найден или закончился"};if(S.used.includes(c))return{ok:0,error:"Вы уже активировали этот код"};x.left--;S.used.push(c);save();return{ok:1,stars:x.stars}}
 if(!ok)return{ok:0,error:p=="/admin/login"?"Неверный логин или пароль":"Нет доступа"};
-if(p=="/admin/list")return{ok:1,promos:S.promos};
+if(p=="/admin/login")return{ok:1};if(p=="/admin/list")return{ok:1,promos:S.promos};
 if(p=="/admin/create"){S.promos[d.code]={stars:d.stars,max:d.max,left:d.max};S.used=S.used.filter(x=>x!=d.code);save();return{ok:1}}
 if(p=="/admin/delete"){delete S.promos[d.code];save();return{ok:1}}
 return{ok:0,error:"Ошибка"}}
