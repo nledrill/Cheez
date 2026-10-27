@@ -88,7 +88,7 @@ nav button.on{color:var(--bl)}
 <script>
 const $=s=>document.querySelector(s),fmt=n=>Math.floor(n).toLocaleString("ru"),rnd=n=>Math.floor(Math.random()*n),pick=a=>a[rnd(a.length)];
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let S={bal:1000,wag:0,daily:0,wel:0,bet:50};
+let S={bal:1000,wag:0,daily:0,wel:0,bet:50,promos:{},used:[]};
 try{Object.assign(S,JSON.parse(localStorage.getItem("cheez")||"{}"))}catch(e){}
 const tg=window.Telegram&&window.Telegram.WebApp;let NAME="Игрок";
 try{tg.ready();tg.expand();NAME=tg.initDataUnsafe.user.first_name||NAME}catch(e){}
@@ -219,7 +219,7 @@ const closeSheet=()=>$("#sheet").classList.remove("on");
 const LV=[["Bronze",0],["Silver",5e3],["Gold",25e3],["Platinum",1e5],["Diamond",5e5]];
 function lvl(){let i=0;LV.forEach((l,j)=>{if(S.wag>=l[1])i=j});return i}
 function menu(){const l=lvl();$("#drawer").innerHTML=`<div class="db" onclick="closeMenu()"></div><div class="dp"><div class="prof"><s>🧑</s>${esc(NAME)}</div><div class="free" onclick="freeMoney()">Free money</div>
-<div class="it" onclick="nav('casino')">♠️ Казино</div><div class="it" onclick="nav('sport')">⚽ Спорт</div><div class="it" onclick="closeMenu();bonusSheet()">🎁 Бонусы${S.wel?"":"<em>1</em>"}</div><div class="it" onclick="closeMenu();vipSheet()">🏆 VIP Loyalty Program<em>New</em></div><div class="it" onclick="closeMenu();clubSheet()">👑 VIP Club</div><div class="it" onclick="nav('chat')">💬 Поддержка 24/7<em style="background:var(--bl)">24/7</em></div><div class="it" onclick="closeMenu();donateSheet()">💛 Поддержать разработчика</div><div class="it" onclick="resetBal()">🔄 Сбросить баланс до 1 000 ⭐</div><div class="foot">Уровень: ${LV[l][0]}</div></div>`;$("#drawer").classList.add("on")}
+<div class="it" onclick="nav('casino')">♠️ Казино</div><div class="it" onclick="nav('sport')">⚽ Спорт</div><div class="it" onclick="closeMenu();bonusSheet()">🎁 Бонусы${S.wel?"":"<em>1</em>"}</div><div class="it" onclick="closeMenu();vipSheet()">🏆 VIP Loyalty Program<em>New</em></div><div class="it" onclick="closeMenu();clubSheet()">👑 VIP Club</div><div class="it" onclick="nav('chat')">💬 Поддержка 24/7<em style="background:var(--bl)">24/7</em></div><div class="it" onclick="closeMenu();promoSheet()">🎟 Промокод</div><div class="it" onclick="closeMenu();ADMC?admSheet():admLogin()">🛠 Админка</div><div class="it" onclick="closeMenu();donateSheet()">💛 Поддержать разработчика</div><div class="it" onclick="resetBal()">🔄 Сбросить баланс до 1 000 ⭐</div><div class="foot">Уровень: ${LV[l][0]}</div></div>`;$("#drawer").classList.add("on")}
 const closeMenu=()=>$("#drawer").classList.remove("on");
 const nav=v=>{closeMenu();go(v)};
 function resetBal(){S.bal=1000;upd();closeMenu();toast("Баланс сброшен: 1 000 ⭐")}
@@ -229,7 +229,20 @@ function claimWel(){S.wel=1;S.bal+=3000;upd();closeSheet();toast("+3 000 ⭐")}
 function vipSheet(){const l=lvl(),n=LV[l+1];sheet(`<h3>VIP Loyalty Program</h3><p>Ваш уровень: <b>${LV[l][0]}</b></p><p>Сыграно ставок: ${fmt(S.wag)} ⭐</p>${n?`<div class="bar"><i style="width:${Math.min(100,(S.wag-LV[l][1])/(n[1]-LV[l][1])*100)}%"></i></div><p>До ${n[0]}: ещё ${fmt(n[1]-S.wag)} ⭐ ставок</p>`:"<p>Максимальный уровень 💎</p>"}`)}
 function clubSheet(){sheet(`<h3>VIP Club</h3><p>Клуб для игроков уровня Gold и выше.</p>${lvl()>=2?`<p>Вы в клубе 👑. Эксклюзивный бонус:</p><button class="go gr2" onclick="S.bal+=1000;upd();closeSheet();toast('+1 000 ⭐')">Забрать 1 000 ⭐</button>`:`<p>Ваш уровень: ${LV[lvl()][0]}. Сыграйте до ${fmt(LV[2][1])} ⭐ ставок, чтобы вступить.</p>`}`)}
 const BOTNAME="Chezz_win_bot";
-function donateSheet(){sheet(`<h3>Поддержать разработчика</h3><p>Донат в настоящих Telegram Stars. На игровой баланс ⭐ он не влияет.</p><div class="outs">${[50,100,500].map(n=>`<button onclick="donate(${n})">${n} ⭐</button>`).join("")}</div><p>Откроется чат с ботом, где нужно подтвердить оплату.</p>`)}
-function donate(n){closeSheet();const u=`https://t.me/${BOTNAME}?start=donate${n}`;try{tg.openTelegramLink(u)}catch(e){window.open(u,"_blank")}}
+function donateSheet(){sheet(`<h3>Поддержать разработчика</h3><p>Донат в настоящих Telegram Stars. На игровой баланс ⭐ он не влияет.</p><div class="outs">${[50,100,500].map(n=>`<button onclick="donate(${n})">${n} ⭐</button>`).join("")}</div><p>Откроется окно оплаты Telegram.</p>`)}
+const LINKS={50:"",100:"",500:""};
+function donate(n){closeSheet();const l=LINKS[n];if(l&&tg&&tg.openInvoice)return tg.openInvoice(l,st=>{if(st=="paid")toast("Спасибо за поддержку! 💛");else if(st=="failed")toast("Оплата не прошла")});const u=`https://t.me/${BOTNAME}?start=donate${n}`;try{tg.openTelegramLink(u)}catch(e){window.open(u,"_blank")}}
+const API="";let ADMC=null;
+async function api(path,d){if(!API)throw new Error("no api");const r=await fetch(API+path,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(d)});return r.json()}
+const cl=v=>String(v).trim().toUpperCase().replace(/[^A-Z0-9А-ЯЁ_-]/g,"");
+function promoSheet(){sheet(`<h3>Промокод</h3><div class="bet"><input id="pr" type="text" placeholder="Введите код" style="text-align:left"></div><button class="go gr2" onclick="redeem()">Активировать</button>`)}
+async function redeem(){const c=cl($("#pr").value);if(!c)return toast("Введите код");try{const r=await api("/redeem",{code:c,initData:tg?tg.initData:""});if(!r.ok)return toast(r.error);S.bal+=r.stars;upd();closeSheet();toast("+"+fmt(r.stars)+" ⭐")}catch(e){toast("Нет связи с сервером")}}
+function admLogin(){sheet(`<h3>Админка</h3><div class="bet"><input id="al" type="text" placeholder="Логин" style="text-align:left"></div><div class="bet"><input id="ap" type="password" placeholder="Пароль" style="text-align:left"></div><button class="go" onclick="admCheck()">Войти</button>`)}
+async function admCheck(){const d={login:$("#al").value.trim(),password:$("#ap").value};try{const r=await api("/admin/login",d);if(!r.ok)return toast(r.error);ADMC=d;admSheet()}catch(e){toast("Нет связи с сервером")}}
+async function admSheet(){let P=[];try{const r=await api("/admin/list",ADMC);if(!r.ok){ADMC=null;return admLogin()}P=Object.entries(r.promos)}catch(e){return toast("Нет связи с сервером")}
+sheet(`<h3>Админка</h3><p>Баланс: <b>${fmt(S.bal)}</b> ⭐</p><div class="bet"><input id="ab" type="number" inputmode="numeric" placeholder="Новый баланс"><button onclick="admBal()">Задать</button></div><h3>Новый промокод</h3><div class="bet"><input id="pc" type="text" placeholder="Код, например CHEEZ100" style="text-align:left"></div><div class="bet"><input id="ps" type="number" inputmode="numeric" placeholder="Звёзд"><input id="pn" type="number" inputmode="numeric" placeholder="Активаций"></div><button class="go gr2" onclick="admPromo()">Создать</button><h3>Промокоды</h3>${P.length?P.map(([c,p])=>`<div class="bh">${c}: ${fmt(p.stars)} ⭐, осталось ${p.left} из ${p.max} <u onclick="admDel('${c}')" style="color:#ff4d5a;margin-left:6px">удалить</u></div>`).join(""):'<div class="bh">Пока нет</div>'}`)}
+function admBal(){const v=Math.floor(+$("#ab").value);if(!(v>=0&&v<=1e12))return toast("Введите число от 0 до 1 000 000 000 000");S.bal=v;upd();admSheet();toast("Баланс: "+fmt(v)+" ⭐")}
+async function admPromo(){const c=cl($("#pc").value),st=Math.floor(+$("#ps").value),n=Math.floor(+$("#pn").value);if(!c)return toast("Введите код");if(!(st>=1&&st<=1e12))return toast("Укажите число звёзд");if(!(n>=1&&n<=1e9))return toast("Укажите число активаций");try{const r=await api("/admin/create",{...ADMC,code:c,stars:st,max:n});if(!r.ok)return toast(r.error);admSheet();toast("Промокод "+c+" создан")}catch(e){toast("Нет связи с сервером")}}
+async function admDel(c){try{await api("/admin/delete",{...ADMC,code:c});admSheet()}catch(e){toast("Нет связи с сервером")}}
 upd();go("home");
 </script></body></html>
